@@ -1,0 +1,114 @@
+[
+  {
+    "id": "cold-call-prospecting",
+    "name": "Cold Call Prospecting",
+    "description": "Make a compelling cold call to a potential customer to introduce your product and schedule a demo.",
+    "persona": "Busy Executive",
+    "difficulty": "medium"
+  },
+  {
+    "id": "product-demo-presentation",
+    "name": "Product Demo Presentation",
+    "description": "Present an engaging product demonstration to showcase features and benefits to interested prospects.",
+    "persona": "Technical Decision Maker",
+    "difficulty": "easy"
+  },
+  {
+    "id": "price-negotiation",
+    "name": "Price Negotiation",
+    "description": "Handle pricing objections and negotiate deals with budget-conscious customers.",
+    "persona": "Cost-Conscious Buyer",
+    "difficulty": "hard"
+  },
+  {
+    "id": "objection-handling",
+    "name": "Objection Handling",
+    "description": "Address common sales objections like 'not interested', 'too expensive', or 'need to think about it'.",
+    "persona": "Skeptical Prospect",
+    "difficulty": "medium"
+  },
+  {
+    "id": "closing-techniques",
+    "name": "Closing Techniques",
+    "description": "Use effective closing strategies to convert prospects into paying customers.",
+    "persona": "Indecisive Customer",
+    "difficulty": "hard"
+  },
+  {
+    "id": "follow-up-strategy",
+    "name": "Follow-Up Strategy",
+    "description": "Follow up with prospects after initial contact to maintain momentum and move deals forward.",
+    "persona": "Forgotten Lead",
+    "difficulty": "easy"
+  },
+  {
+    "id": "competitive-positioning",
+    "name": "Competitive Positioning",
+    "description": "Position your product against competitors and highlight unique value propositions.",
+    "persona": "Comparison Shopper",
+    "difficulty": "medium"
+  },
+  {
+    "id": "upselling-existing-customers",
+    "name": "Upselling Existing Customers",
+    "description": "Identify opportunities to sell additional products or services to current customers.",
+    "persona": "Satisfied Customer",
+    "difficulty": "easy"
+  },
+  {
+    "id": "relationship-building",
+    "name": "Relationship Building",
+    "description": "Build long-term relationships with prospects and customers through consultative selling.",
+    "persona": "Relationship-Focused Client",
+    "difficulty": "medium"
+  },
+  {
+    "id": "sales-presentation",
+    "name": "Sales Presentation",
+    "description": "Deliver a compelling sales presentation to decision-makers and stakeholders.",
+    "persona": "C-Suite Executive",
+    "difficulty": "hard"
+  },
+  {
+    "id": "qualifying-prospects",
+    "name": "Qualifying Prospects",
+    "description": "Ask the right questions to qualify prospects and determine if they're a good fit.",
+    "persona": "Unqualified Lead",
+    "difficulty": "easy"
+  },
+  {
+    "id": "handling-rejection",
+    "name": "Handling Rejection",
+    "description": "Deal with rejection professionally and learn from each 'no' to improve future sales.",
+    "persona": "Rejection-Prone Prospect",
+    "difficulty": "hard"
+  },
+  {
+    "id": "enterprise-sale",
+    "name": "Enterprise Sale Challenge",
+    "description": "Navigate a complex enterprise sale with multiple stakeholders and long sales cycles.",
+    "persona": "Enterprise Decision Maker",
+    "difficulty": "expert"
+  },
+  {
+    "id": "startup-pitch",
+    "name": "Startup Pitch Challenge",
+    "description": "Pitch your innovative solution to skeptical investors and early adopters.",
+    "persona": "Angel Investor",
+    "difficulty": "expert"
+  },
+  {
+    "id": "difficult-prospect",
+    "name": "Difficult Prospect Challenge",
+    "description": "Handle an extremely challenging prospect with multiple objections and concerns.",
+    "persona": "Hostile Prospect",
+    "difficulty": "expert"
+  },
+  {
+    "id": "competitive-battle",
+    "name": "Competitive Battle",
+    "description": "Win against a strong competitor in a head-to-head sales battle.",
+    "persona": "Competitor's Customer",
+    "difficulty": "expert"
+  }
+]
