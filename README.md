@@ -47,8 +47,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ## Deployment
 
 Your project is live at:
-
-**[https://vercel.com/sumiths-projects-be9ca28e/v0-next-js-chatbot-webpage](https://vercel.com/sumiths-projects-be9ca28e/v0-next-js-chatbot-webpage)**
+(https://training-bot-gray.vercel.app/)
 
 ## Build your app
 
