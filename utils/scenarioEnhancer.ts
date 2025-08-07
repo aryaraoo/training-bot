@@ -14,7 +14,7 @@ export interface EnhancedScenario {
     budget?: string;
     timeline?: string;
     objections?: string[];
-    painPoints?: string[];
+    painPoints?: string[] | string;
   };
 }
 

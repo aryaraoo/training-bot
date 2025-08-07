@@ -42,23 +42,35 @@ export function useConversations() {
     }
   }, [user])
 
-  const createConversation = useCallback(async (title: string) => {
-    if (!user) return null
-    try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert({ user_id: user.id, title })
-        .select()
-        .single()
-      if (error) throw error
-      const conversation = data as Conversation
-      setConversations(prev => [conversation, ...prev])
-      return conversation
-    } catch (error) {
-      console.error('Error creating conversation:', error)
-      return null
-    }
-  }, [user])
+  const createConversation = useCallback(
+    async (title: string) => {
+      if (!user) return null;
+
+      try {
+        const { data, error } = await supabase
+          .from('conversations')
+          .insert({ user_id: user.id, title })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Supabase insert error:', error);
+          throw error;
+        }
+
+        const conversation = data as Conversation;
+
+        // Assuming setConversations(...) is available in scope:
+        setConversations((prev) => [conversation, ...prev]);
+
+        return conversation;
+      } catch (error) {
+        console.error('Error creating conversation:', error);
+        return null;
+      }
+    },
+    [user, setConversations]
+  );
 
   const updateConversationTitle = useCallback(async (conversationId: string, title: string) => {
     if (!user) return

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import scenarios from "@/data/scenarios.json";
+import scenarios from "@/utils/Scenarios.json";
 
 export default function TrainingChat() {
   const [selectedScenario, setSelectedScenario] = useState(scenarios[0]);
@@ -27,7 +27,7 @@ export default function TrainingChat() {
       {
         id: "system-2",
         role: "system",
-        content: selectedScenario.prompt,
+        content: `You are a realistic sales executive in an IT sales scenario. Respond based on the selected scenario. Do NOT read aloud colons (:), asterisks (*), or commas. Act like a real human, not a bot.`,
       },
     ],
   });
@@ -37,7 +37,7 @@ export default function TrainingChat() {
     append({
       id: `system-${Date.now()}`,
       role: "system",
-      content: selectedScenario.prompt,
+      content: `You are a realistic customer in an IT sales scenario. Respond based on the selected scenario. Do NOT read aloud colons (:), asterisks (*), or commas. Act like a real human, not a bot.`,
     });
   }, [selectedScenario]);
 

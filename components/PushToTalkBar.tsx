@@ -2,7 +2,18 @@ import { Button } from "@/components/ui/button";
 import { Mic, MessageSquare, RotateCcw, Plus, History, RefreshCw } from "lucide-react";
 import clsx from "clsx";
 
-export const PushToTalkBar = ({
+interface PushToTalkBarProps {
+  isRecording: boolean;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
+  onNewChat: () => void;
+  onShowHistory: () => void;
+  onRefreshChat: () => void;
+  currentMode: string; 
+  onToggleMode: () => void;
+  showModeIndicator?: boolean; 
+}
+export function PushToTalkBar({
   isRecording,
   onStartRecording,
   onStopRecording,
@@ -11,8 +22,8 @@ export const PushToTalkBar = ({
   onRefreshChat,
   currentMode,
   onToggleMode,
-  showModeIndicator = true,
-}) => {
+  showModeIndicator = true, // default prop value
+}: PushToTalkBarProps) {
   return (
     <div className="flex flex-col items-center bottom-2 z-30">
       <div className="flex items-center gap-4 bg-white/95 backdrop-blur-md rounded-full px-6 py-4 shadow-xl border border-gray-200/50">
