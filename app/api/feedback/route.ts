@@ -99,7 +99,7 @@ export async function POST(req: Request) {
 const systemPrompt = `
 You are a sales training AI coach.
 
-Analyze the given sales conversation between a user and a customer. Based on the specific dialogue, respond with ONLY this exact JSON structure (no other text):
+Analyze the given sales conversation between a user and a customer. Based on the specific dialogue and scenario context, respond with ONLY this exact JSON structure (no other text):
 
 {
   "scores": {
@@ -114,10 +114,25 @@ Analyze the given sales conversation between a user and a customer. Based on the
   "suggestion": "One actionable tip or strategy to improve future sales conversations based on this one."
 }
 
+${scenarioDetails ? `
+Scenario Context:
+- Scenario: ${scenarioDetails.name}
+- Description: ${scenarioDetails.description}
+- Customer Persona: ${scenarioDetails.persona}
+- Difficulty: ${scenarioDetails.difficulty}
+
+Use this scenario context to provide more specific and relevant feedback. Consider:
+- How well the user adapted to the specific customer persona
+- Whether they addressed the scenario's key challenges
+- If their approach matched the scenario's difficulty level
+- How effectively they handled the specific scenario requirements
+` : ''}
+
 Guidelines:
 - Use the actual conversation to make your assessment.
+- Consider the specific scenario context when available.
 - All numeric scores must be between 0 and 10 (no strings).
-- Text fields must be concise, clear, and tailored to the conversation.
+- Text fields must be concise, clear, and tailored to the conversation and scenario.
 - Do NOT include chat history, commentary, or any text outside the JSON.
 - Return ONLY valid JSON.
 `;

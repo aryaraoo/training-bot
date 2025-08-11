@@ -68,7 +68,7 @@ declare global {
 }
 
 export default function SalesTrainingChatInterface() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
 
   const {
     conversations,
@@ -200,6 +200,9 @@ export default function SalesTrainingChatInterface() {
     async function loadMessages() {
       setIsLoadingConversation(true);
       try {
+        if (!currentConversationId || typeof currentConversationId !== 'string') {
+          return;
+        }
         const msgs = await getMessages(currentConversationId);
         const loadedMsgs: ChatMessage[] = msgs.map((msg: any) => ({
           id: msg.id,
@@ -228,7 +231,7 @@ export default function SalesTrainingChatInterface() {
 
   // Send message handler with TTS audio playback
   const sendMessageToAPI = useCallback(
-    async (text: string) => {
+    async (text: string, overrideScenario?: Scenario | null) => {
       if (isLoading || lastProcessedMessage === text) return;
 
       setInput("");
@@ -251,7 +254,7 @@ export default function SalesTrainingChatInterface() {
         const res = await fetch("/api/voicechat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: messagesForAPI, scenario: scenarioDetails }),
+          body: JSON.stringify({ messages: messagesForAPI, scenario: overrideScenario ?? scenarioDetails }),
         });
 
         if (!res.ok) {
@@ -298,6 +301,8 @@ export default function SalesTrainingChatInterface() {
           await saveMessage(currentConversationId, "user", text);
           await saveMessage(currentConversationId, "assistant", data.text);
           refetchConversations();
+        } else {
+          console.log("No conversation ID, skipping message persistence");
         }
       } catch (e) {
         setError(e instanceof Error ? e : new Error("Unknown error"));
@@ -319,7 +324,10 @@ export default function SalesTrainingChatInterface() {
       let convId = currentConversationId;
       if (!convId) {
         const newConv = await createConversation(input.length > 50 ? input.substr(0, 50) + "..." : input);
-        if (!newConv) return;
+        if (!newConv) {
+          console.error("Failed to create conversation");
+          return;
+        }
         convId = newConv.id;
         setCurrentConversationId(convId);
       }
@@ -380,6 +388,14 @@ export default function SalesTrainingChatInterface() {
   const handleScenarioClick = useCallback(
     async (scenarioId: string) => {
       console.log("Clicked scenario ID:", scenarioId);
+      
+      // Check if user is authenticated
+      if (!user) {
+        console.error("User not authenticated when trying to create scenario");
+        setError(new Error("Please sign in to start a conversation"));
+        return;
+      }
+
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
@@ -391,22 +407,34 @@ export default function SalesTrainingChatInterface() {
       setScenarioDetails(scenario);
 
       const title = scenario ? `${scenario.name} - ${scenario.persona}` : "Sales Training";
+      
+      console.log("Creating conversation with title:", title);
       const newConv = await createConversation(title);
-      if (newConv) setCurrentConversationId(newConv.id);
+      
+      if (newConv) {
+        console.log("Successfully created conversation:", newConv.id);
+        setCurrentConversationId(newConv.id);
+      } else {
+        console.warn("Failed to create conversation in database, continuing without persistence");
+        // Continue without database persistence - this allows the scenario to work even if DB fails
+        setCurrentConversationId(null);
+        setError(new Error("Note: Conversation won't be saved due to database issue"));
+      }
 
-      setChatMessages([
-        createMessage(
-          "assistant",
-          scenario
-            ? `Welcome to ${scenario.name}! You'll be practicing with a ${scenario.persona}. Ready to begin?`
-            : "Welcome! Please select a sales training scenario."
-        ),
-      ]);
+      // Clear any previous messages and start immediately with a kickoff prompt
+      setChatMessages([]);
       setInput("");
       setLastProcessedMessage("");
-      setError(null);
+      // Don't clear error here as we want to show the database warning
+
+      // Kickoff message to start the roleplay right away
+      const kickoff = scenario
+        ? `Start the roleplay for ${scenario.name}. Act as the customer persona: ${scenario.persona}. Begin the conversation naturally based on this scenario.`
+        : "Start a sales training conversation now.";
+
+      await sendMessageToAPI(kickoff, scenario);
     },
-    [createConversation]
+    [createConversation, sendMessageToAPI, user]
   );
 
   // Delete conversation handler
@@ -462,6 +490,7 @@ export default function SalesTrainingChatInterface() {
           setActiveScenarioId(null);
         }
       } catch (e) {
+        console.error("Error loading conversation:", e);
         setError(e instanceof Error ? e : new Error("Unable to load conversation messages"));
         addMessage("assistant", "Unable to load conversation messages. Please try again.");
       }
@@ -515,27 +544,49 @@ export default function SalesTrainingChatInterface() {
   // Suggestion cards for quick message input
   const suggestionCards = [
     {
-      title: "Sales Roleplay",
+      title: "Cold calling",
       subtitle: "Practice",
       description: "Practice a sales conversation scenario.",
       icon: Users,
     },
     {
-      title: "Pitch Feedback",
+      title: "Demo Pitch ",
       subtitle: "Pitch",
       description: "Get feedback on your sales pitch.",
       icon: TrendingUp,
     },
     {
-      title: "Quiz",
-      subtitle: "Quiz",
+      title: "Upsell",
+      subtitle: "Upsell",
       description: "Test your sales knowledge.",
       icon: Bot, // or HelpCircle if preferred
     },
   ];
 
+  // Add mapping from suggestion card titles to scenario IDs
+  const suggestionToScenarioId: Record<string, string> = {
+    "Cold calling": "cold-call-prospecting",
+    "Demo Pitch ": "product-demo-presentation", // Note the trailing space
+    "Upsell": "upselling-existing-customers"
+  };
+
+  // Update handleSuggestionClick to trigger scenario selection
   const handleSuggestionClick = (suggestion: string) => {
-    setInput(suggestion);
+    if (authLoading) {
+      console.log("Authentication still loading, ignoring suggestion click");
+      return;
+    }
+    
+    console.log("Suggestion clicked:", suggestion);
+    const scenarioId = suggestionToScenarioId[suggestion];
+    console.log("Mapped scenario ID:", scenarioId);
+    if (scenarioId) {
+      console.log("Calling handleScenarioClick with:", scenarioId);
+      handleScenarioClick(scenarioId);
+    } else {
+      console.log("No scenario mapping found, setting input as fallback");
+      setInput(suggestion); // fallback
+    }
   };
 
   // Toggle mobile menu
@@ -554,13 +605,7 @@ export default function SalesTrainingChatInterface() {
       )}
 
       {/* Sidebar */}
-      <div
-        className={clsx(
-          "fixed lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-50",
-          "w-72 sm:w-80 bg-white border-r border-gray-200 flex flex-col full-height shadow-md",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
+      <div className="fixed lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-50 w-72 sm:w-80 bg-white border-r border-gray-200 flex flex-col full-height shadow-md">
         {/* Mobile close */}
         <div className="lg:hidden flex justify-end p-3 border-b border-gray-200">
           <Button
@@ -606,84 +651,45 @@ export default function SalesTrainingChatInterface() {
           </div>
         </div>
 
-        {/* Scenarios List */}
+        {/* Conversation List */}
         <ScrollArea className="flex-1 p-4">
-          <h3 className="font-semibold text-gray-800 mb-4 text-lg">Sales Training Scenarios</h3>
-          <div className="space-y-3">
-            {Scenarios.map((scenario) => (
+          <h3 className="font-semibold text-gray-800 mb-2 text-lg">Recent Conversations</h3>
+          {conversationsLoading && <p className="text-xs text-gray-500">Loading conversations...</p>}
+          {conversations.length === 0 && !conversationsLoading ? (
+            <p className="text-xs text-gray-400">No conversations yet.</p>
+          ) : (
+            conversations.map((conv) => (
               <Card
-                key={scenario.id}
-                onClick={() => handleScenarioClick(scenario.id)}
+                key={conv.id}
                 className={clsx(
-                  "p-4 cursor-pointer transition-all duration-200 border",
-                  activeScenarioId === scenario.id
-                    ? "bg-gradient-to-r from-gray-100 to-purple-100 border-purple-300 shadow-md"
-                    : "border-gray-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-purple-50 hover:border-purple-200 hover:shadow-md"
+                  "p-3 cursor-pointer border transition hover:shadow-md",
+                  conv.id === currentConversationId
+                    ? "bg-purple-100 border-purple-400 shadow"
+                    : "border-gray-200"
                 )}
+                onClick={() => handleSelectConversation(conv)}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-sm font-semibold text-gray-800">{scenario.name}</h4>
-                  <span
-                    className={clsx(
-                      "text-xs px-2 py-1 rounded-full",
-                      scenario.difficulty === "easy"
-                        ? "bg-green-100 text-green-700"
-                        : scenario.difficulty === "medium"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : scenario.difficulty === "hard"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-purple-100 text-purple-700"
-                    )}
-                  >
-                    {scenario.difficulty}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 mb-1">{scenario.description}</p>
-                <p className="text-xs text-gray-500">Persona: {scenario.persona}</p>
-              </Card>
-            ))}
-          </div>
-
-          {/* Conversation List */}
-          <div className="mt-6">
-            <h3 className="font-semibold text-gray-800 mb-2 text-lg">Recent Conversations</h3>
-            {conversationsLoading && <p className="text-xs text-gray-500">Loading conversations...</p>}
-            {conversations.length === 0 && !conversationsLoading ? (
-              <p className="text-xs text-gray-400">No conversations yet.</p>
-            ) : (
-              conversations.map((conv) => (
-                <Card
-                  key={conv.id}
-                  className={clsx(
-                    "p-3 cursor-pointer border transition hover:shadow-md",
-                    conv.id === currentConversationId
-                      ? "bg-purple-100 border-purple-400 shadow"
-                      : "border-gray-200"
-                  )}
-                  onClick={() => handleSelectConversation(conv)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="truncate max-w-[85%]">
-                      <p className="font-medium text-sm text-gray-900 truncate">{conv.title}</p>
-                      <p className="text-xs text-gray-500">{new Date(conv.updated_at).toLocaleString()}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-400 hover:text-red-600 p-1 h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteConversation(conv.id);
-                      }}
-                      title="Delete Conversation"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                <div className="flex justify-between items-center">
+                  <div className="truncate max-w-[85%]">
+                    <p className="font-medium text-sm text-gray-900 truncate">{conv.title}</p>
+                    <p className="text-xs text-gray-500">{new Date(conv.updated_at).toLocaleString()}</p>
                   </div>
-                </Card>
-              ))
-            )}
-          </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-400 hover:text-red-600 p-1 h-6 w-6"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteConversation(conv.id);
+                    }}
+                    title="Delete Conversation"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
 
           <div className="mt-4">
             <Button
@@ -711,7 +717,7 @@ export default function SalesTrainingChatInterface() {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <FeedbackBtn messages={chatMessages} />
+          <FeedbackBtn messages={chatMessages} scenario={scenarioDetails} />
         </div>
 
         {/* Loading indicator */}
@@ -750,69 +756,127 @@ export default function SalesTrainingChatInterface() {
               <div className="flex flex-col items-center justify-center min-h-full max-w-4xl mx-auto text-center text-gray-600">
                 <h2 className="mt-2 text-lg font-semibold">Welcome to Sales Training Bot</h2>
                 <p className="mt-1 text-sm max-w-md">
-                  Press the microphone button below to start speaking with your AI assistant.
+                  Choose a scenario to start practicing your sales skills.
                 </p>
 
-                {/* Suggestion cards */}
-                {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl w-full mt-6">
-                  {suggestionCards.map(({ icon: IconComponent, title, subtitle, description }, idx) => (
-                    <Card
-                      key={idx}
-                      className="p-4 cursor-pointer shadow hover:shadow-md transition transform hover:scale-[1.03]"
-                      onClick={() => handleSuggestionClick(`Help me with ${title.toLowerCase()}`)}
-                    >
-                      <div className="flex items-center mb-3">
-                        <div className="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center mr-3">
-                          <IconComponent className="w-5 h-5 text-white" />
+                {/* Loading state */}
+                {authLoading ? (
+                  <div className="mt-6">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700 mx-auto"></div>
+                    <p className="text-sm text-gray-500 mt-2">Loading...</p>
+                  </div>
+                ) : (
+                  /* Suggestion cards */
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl w-full mt-6">
+                    {suggestionCards.map(({ icon: IconComponent, title, subtitle, description }, idx) => (
+                      <Card
+                        key={idx}
+                        className="p-4 cursor-pointer shadow hover:shadow-md transition transform hover:scale-[1.03]"
+                        onClick={() => handleSuggestionClick(title)}
+                      >
+                        <div className="flex items-center mb-3">
+                          <div className="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center mr-3">
+                            <IconComponent className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-800">{title}</h3>
+                            <p className="text-purple-700 text-xs">{subtitle}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-800">{title}</h3>
-                          <p className="text-purple-700 text-xs">{subtitle}</p>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-xs">{description}</p>
-                    </Card>
-                  ))}
-                </div> */}
+                        <p className="text-gray-600 text-xs">{description}</p>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
-              chatMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={clsx("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}
-                >
-                  {msg.role === "assistant" && (
-                    <div className="bg-purple-700 rounded-full w-8 h-8 flex items-center justify-center shadow-md">
-                      <Bot className="w-5 h-5 text-white" />
+              <>
+                {/* Show scenario cards in a compact format when conversation is active */}
+                {chatMessages.length > 0 && !authLoading && (
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium text-gray-700">Try Different Scenarios:</h3>
+                      <span className="text-xs text-gray-500">Click to switch</span>
                     </div>
-                  )}
-
-                  <div
-                    className={clsx(
-                      "max-w-[70%] px-4 py-2 rounded-lg shadow-sm",
-                      msg.role === "user"
-                        ? "bg-purple-700 text-white"
-                        : "bg-white text-gray-800 border border-gray-200"
-                    )}
-                  >
-                  <div
-                      className={clsx(
-                        "prose-sm max-w-none",
-                        msg.role === "user" ? "text-white" : "text-gray-800",
-                        "prose" // keep it here so it doesn’t override color
-                      )}
-                    >
-                      {msg.content}
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {suggestionCards.map(({ icon: IconComponent, title, subtitle }, idx) => {
+                        const scenarioId = suggestionToScenarioId[title];
+                        const isActive = scenarioId === activeScenarioId;
+                        return (
+                          <Card
+                            key={idx}
+                            className={clsx(
+                              "flex-shrink-0 p-3 cursor-pointer border transition-all duration-200 min-w-[140px]",
+                              isActive 
+                                ? "border-purple-500 bg-purple-50 shadow-md" 
+                                : "border-gray-200 hover:border-purple-300 hover:shadow-md"
+                            )}
+                            onClick={() => handleSuggestionClick(title)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className={clsx(
+                                "w-6 h-6 rounded-lg flex items-center justify-center",
+                                isActive ? "bg-purple-600" : "bg-purple-700"
+                              )}>
+                                <IconComponent className="w-4 h-4 text-white" />
+                              </div>
+                              <div>
+                                <h4 className={clsx(
+                                  "text-xs font-medium",
+                                  isActive ? "text-purple-700" : "text-gray-800"
+                                )}>
+                                  {title}
+                                  {isActive && <span className="ml-1 text-purple-600">●</span>}
+                                </h4>
+                                <p className="text-xs text-gray-500">{subtitle}</p>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
+                )}
+                
+                {/* Chat messages */}
+                {chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={clsx("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}
+                  >
+                    {msg.role === "assistant" && (
+                      <div className="bg-purple-700 rounded-full w-8 h-8 flex items-center justify-center shadow-md">
+                        <Bot className="w-5 h-5 text-white" />
+                      </div>
+                    )}
 
-                  {msg.role === "user" && (
-                    <div className="bg-gray-400 rounded-full w-8 h-8 flex items-center justify-center shadow-md">
-                      <User className="w-5 h-5 text-white" />
+                    <div
+                      className={clsx(
+                        "max-w-[70%] px-4 py-2 rounded-lg shadow-sm",
+                        msg.role === "user"
+                          ? "bg-purple-700 text-white"
+                          : "bg-white text-gray-800 border border-gray-200"
+                      )}
+                    >
+                      <div
+                        className={clsx(
+                          "prose-sm max-w-none",
+                          msg.role === "user" ? "text-white" : "text-gray-800",
+                          "prose" // keep it here so it doesn't override color
+                        )}
+                      >
+                        {msg.content}
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))
+
+                    {msg.role === "user" && (
+                      <div className="bg-gray-400 rounded-full w-8 h-8 flex items-center justify-center shadow-md">
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
             )}
             <div ref={bottomRef} />
           </ScrollArea>
@@ -862,12 +926,9 @@ export default function SalesTrainingChatInterface() {
         </div>
       </div>
 
+
+
 {/* Push To Talk Bar */}
-
-
-
-
-
       {/* <div className="fixed inset-x-0 bottom-8 flex justify-center lg:justify-start lg:pl-[280px]">
         <PushToTalkBar
           isRecording={recordingTimeout}

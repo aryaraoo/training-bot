@@ -44,7 +44,12 @@ export function useConversations() {
 
   const createConversation = useCallback(
     async (title: string) => {
-      if (!user) return null;
+      if (!user) {
+        console.error('No user found when trying to create conversation');
+        return null;
+      }
+
+      console.log('Creating conversation with:', { user_id: user.id, title });
 
       try {
         const { data, error } = await supabase
@@ -54,22 +59,32 @@ export function useConversations() {
           .single();
 
         if (error) {
-          console.error('Supabase insert error:', error);
+          console.error('Supabase insert error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
           throw error;
         }
 
+        console.log('Successfully created conversation:', data);
         const conversation = data as Conversation;
 
-        // Assuming setConversations(...) is available in scope:
+        // Update conversations state
         setConversations((prev) => [conversation, ...prev]);
 
         return conversation;
       } catch (error) {
         console.error('Error creating conversation:', error);
+        // Log more details about the error
+        if (error && typeof error === 'object') {
+          console.error('Error object:', JSON.stringify(error, null, 2));
+        }
         return null;
       }
     },
-    [user, setConversations]
+    [user]
   );
 
   const updateConversationTitle = useCallback(async (conversationId: string, title: string) => {
@@ -151,13 +166,10 @@ export function useConversations() {
     [user]
   )
 
+  // Fetch conversations when user changes
   useEffect(() => {
-    if (user) {
-      fetchConversations()
-    } else {
-      setConversations([])
-    }
-  }, [user, fetchConversations])
+    fetchConversations()
+  }, [fetchConversations])
 
   return {
     conversations,

@@ -6,8 +6,19 @@ interface ChatMessage {
   content: string;
 }
 
+interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  persona: string;
+  difficulty: string;
+  prompts?: string | string[];
+  scenarioType?: string;
+}
+
 interface FeedbackButtonProps {
   messages: ChatMessage[];
+  scenario?: Scenario | null;
 }
 
 interface FeedbackData {
@@ -23,7 +34,7 @@ interface FeedbackData {
   suggestion: string;
 }
 
-export default function FeedbackButton({ messages }: FeedbackButtonProps) {
+export default function FeedbackButton({ messages, scenario }: FeedbackButtonProps) {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +51,7 @@ export default function FeedbackButton({ messages }: FeedbackButtonProps) {
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages, scenario }),
       });
 
       if (!res.ok) throw new Error("Failed to fetch feedback");
