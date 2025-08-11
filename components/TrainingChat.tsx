@@ -288,13 +288,25 @@ export default function SalesTrainingChatInterface() {
             setTimeout(() => setSpeechStatus(""), 3000);
           };
 
-          audioRef.current.onerror = () => {
+          audioRef.current.onerror = (error) => {
+            console.error("Audio playback error:", error);
             setIsPlayingAudio(false);
             URL.revokeObjectURL(audioUrl);
-            console.error("Audio playback failed");
+            setSpeechStatus("Audio playback failed, but conversation continues...");
+            setTimeout(() => setSpeechStatus(""), 3000);
+            // Don't throw error, just log it and continue
           };
 
-          await audioRef.current.play();
+          try {
+            await audioRef.current.play();
+          } catch (playError) {
+            console.error("Audio play failed:", playError);
+            setIsPlayingAudio(false);
+            URL.revokeObjectURL(audioUrl);
+            setSpeechStatus("Audio unavailable, but conversation continues...");
+            setTimeout(() => setSpeechStatus(""), 3000);
+            // Don't throw error, just log it and continue
+          }
         }
 
         if (currentConversationId) {
@@ -429,8 +441,8 @@ export default function SalesTrainingChatInterface() {
 
       // Kickoff message to start the roleplay right away
       const kickoff = scenario
-        ? `Start the roleplay for ${scenario.name}. Act as the customer persona: ${scenario.persona}. Begin the conversation naturally based on this scenario.`
-        : "Start a sales training conversation now.";
+        ? `Hi, I'm calling about ${scenario.name.toLowerCase()}. I'd like to discuss how our solution can help you.`
+        : "Hello, I'd like to introduce you to our sales training solution.";
 
       await sendMessageToAPI(kickoff, scenario);
     },
@@ -722,15 +734,21 @@ export default function SalesTrainingChatInterface() {
 
         {/* Loading indicator */}
         {isLoadingConversation && (
-          <div className="p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 flex-shrink-0 text-sm">
-            Loading conversation...
+          <div className="p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 flex-shrink-0 text-sm animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+              Loading conversation...
+            </div>
           </div>
         )}
 
         {/* Error display */}
         {error && (
-          <div className="p-4 bg-red-50 border-l-4 border-red-400 text-red-800 text-sm">
-            <strong>Error:</strong> {error.message}
+          <div className="p-4 bg-red-50 border-l-4 border-red-400 text-red-800 text-sm animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 text-red-500">⚠️</div>
+              <strong>Error:</strong> {error.message}
+            </div>
           </div>
         )}
 
@@ -741,11 +759,11 @@ export default function SalesTrainingChatInterface() {
 
           {/* Speech status */}
           {speechStatus && (
-            <div className="px-4 mb-2">
+            <div className="px-4 mb-2 animate-in slide-in-from-top-2 duration-300">
               <div className="max-w-4xl mx-auto">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  {speechStatus}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700 flex items-center gap-2 animate-pulse">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="font-medium">{speechStatus}</span>
                 </div>
               </div>
             </div>
@@ -771,11 +789,12 @@ export default function SalesTrainingChatInterface() {
                     {suggestionCards.map(({ icon: IconComponent, title, subtitle, description }, idx) => (
                       <Card
                         key={idx}
-                        className="p-4 cursor-pointer shadow hover:shadow-md transition transform hover:scale-[1.03]"
+                        className="p-4 cursor-pointer shadow hover:shadow-lg transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 animate-in slide-in-from-bottom-4 duration-500"
+                        style={{ animationDelay: `${idx * 150}ms` }}
                         onClick={() => handleSuggestionClick(title)}
                       >
                         <div className="flex items-center mb-3">
-                          <div className="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center mr-3">
+                          <div className="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 group-hover:bg-purple-600">
                             <IconComponent className="w-5 h-5 text-white" />
                           </div>
                           <div>
@@ -806,27 +825,28 @@ export default function SalesTrainingChatInterface() {
                           <Card
                             key={idx}
                             className={clsx(
-                              "flex-shrink-0 p-3 cursor-pointer border transition-all duration-200 min-w-[140px]",
+                              "flex-shrink-0 p-3 cursor-pointer border transition-all duration-300 min-w-[140px] transform hover:scale-105 hover:-translate-y-1 animate-in slide-in-from-right-4 duration-300",
                               isActive 
                                 ? "border-purple-500 bg-purple-50 shadow-md" 
                                 : "border-gray-200 hover:border-purple-300 hover:shadow-md"
                             )}
+                            style={{ animationDelay: `${idx * 100}ms` }}
                             onClick={() => handleSuggestionClick(title)}
                           >
                             <div className="flex items-center gap-2">
                               <div className={clsx(
-                                "w-6 h-6 rounded-lg flex items-center justify-center",
+                                "w-6 h-6 rounded-lg flex items-center justify-center transition-all duration-300",
                                 isActive ? "bg-purple-600" : "bg-purple-700"
                               )}>
                                 <IconComponent className="w-4 h-4 text-white" />
                               </div>
                               <div>
                                 <h4 className={clsx(
-                                  "text-xs font-medium",
+                                  "text-xs font-medium transition-colors duration-300",
                                   isActive ? "text-purple-700" : "text-gray-800"
                                 )}>
                                   {title}
-                                  {isActive && <span className="ml-1 text-purple-600">●</span>}
+                                  {isActive && <span className="ml-1 text-purple-600 animate-pulse">●</span>}
                                 </h4>
                                 <p className="text-xs text-gray-500">{subtitle}</p>
                               </div>
@@ -839,20 +859,24 @@ export default function SalesTrainingChatInterface() {
                 )}
                 
                 {/* Chat messages */}
-                {chatMessages.map((msg) => (
+                {chatMessages.map((msg, index) => (
                   <div
                     key={msg.id}
-                    className={clsx("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}
+                    className={clsx(
+                      "flex gap-3 animate-in slide-in-from-bottom-2 duration-300",
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    )}
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     {msg.role === "assistant" && (
-                      <div className="bg-purple-700 rounded-full w-8 h-8 flex items-center justify-center shadow-md">
+                      <div className="bg-purple-700 rounded-full w-8 h-8 flex items-center justify-center shadow-md animate-in zoom-in-50 duration-200">
                         <Bot className="w-5 h-5 text-white" />
                       </div>
                     )}
 
                     <div
                       className={clsx(
-                        "max-w-[70%] px-4 py-2 rounded-lg shadow-sm",
+                        "max-w-[70%] px-4 py-2 rounded-lg shadow-sm animate-in slide-in-from-bottom-2 duration-300",
                         msg.role === "user"
                           ? "bg-purple-700 text-white"
                           : "bg-white text-gray-800 border border-gray-200"
@@ -870,12 +894,28 @@ export default function SalesTrainingChatInterface() {
                     </div>
 
                     {msg.role === "user" && (
-                      <div className="bg-gray-400 rounded-full w-8 h-8 flex items-center justify-center shadow-md">
+                      <div className="bg-gray-400 rounded-full w-8 h-8 flex items-center justify-center shadow-md animate-in zoom-in-50 duration-200">
                         <User className="w-5 h-5 text-white" />
                       </div>
                     )}
                   </div>
                 ))}
+
+                {/* Typing indicator */}
+                {isLoading && (
+                  <div className="flex gap-3 justify-start animate-in slide-in-from-bottom-2 duration-300">
+                    <div className="bg-purple-700 rounded-full w-8 h-8 flex items-center justify-center shadow-md">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="bg-white text-gray-800 border border-gray-200 rounded-lg px-4 py-2 shadow-sm">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
             <div ref={bottomRef} />
@@ -884,12 +924,12 @@ export default function SalesTrainingChatInterface() {
           {/* Input form */}
           <form
             onSubmit={handleSubmit}
-            className="sticky bottom-0 z-10 bg-white border-t border-gray-200 p-3 flex items-center gap-2"
+            className="sticky bottom-0 z-10 bg-white border-t border-gray-200 p-3 flex items-center gap-2 animate-in slide-in-from-bottom-4 duration-300"
           >
             <textarea
               rows={1}
               placeholder="Ask about sales strategy, pitching, or practice..."
-              className="flex-grow resize-none border border-gray-300 rounded-lg p-2 text-gray-800 text-sm focus:outline-purple-600"
+              className="flex-grow resize-none border border-gray-300 rounded-lg p-2 text-gray-800 text-sm focus:outline-purple-600 focus:ring-2 focus:ring-purple-200 transition-all duration-200"
               value={input}
               onChange={handleInputChange}
               onInput={handleTextareaResize}
@@ -904,7 +944,7 @@ export default function SalesTrainingChatInterface() {
                 size="sm"
                 onClick={toggleSpeechRecognition}
                 className={clsx(
-                  "rounded-full w-10 h-10 flex justify-center items-center",
+                  "rounded-full w-10 h-10 flex justify-center items-center transition-all duration-300 transform hover:scale-110",
                   listening ? "bg-red-600 hover:bg-red-700 animate-pulse" : "bg-purple-700 hover:bg-purple-800"
                 )}
                 title={listening ? "Stop listening" : "Start listening"}
@@ -916,7 +956,7 @@ export default function SalesTrainingChatInterface() {
             <Button
               type="submit"
               size="sm"
-              className="bg-purple-700 hover:bg-purple-800 text-white rounded-full w-10 h-10 flex justify-center items-center shadow-sm"
+              className="bg-purple-700 hover:bg-purple-800 text-white rounded-full w-10 h-10 flex justify-center items-center shadow-sm transition-all duration-300 transform hover:scale-110 disabled:transform-none"
               disabled={isLoading || !input.trim()}
               title="Send message"
             >

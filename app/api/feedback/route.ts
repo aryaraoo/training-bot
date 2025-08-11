@@ -136,6 +136,12 @@ CONVERSATION METRICS:
 - Average Assistant Message Length: ${conversationMetrics.avgAssistantMessageLength} words
 - Conversation Ratio (Assistant/User): ${conversationMetrics.conversationRatio}
 
+CONVERSATION ANALYSIS FACTORS:
+- Message Length Impact: ${conversationMetrics.avgUserMessageLength < 10 ? 'Short responses may indicate lack of detail' : conversationMetrics.avgUserMessageLength > 50 ? 'Long responses may indicate thoroughness or verbosity' : 'Balanced response length'}
+- Engagement Level: ${parseFloat(conversationMetrics.conversationRatio) > 1.5 ? 'High customer engagement' : parseFloat(conversationMetrics.conversationRatio) < 0.5 ? 'Low customer engagement' : 'Moderate customer engagement'}
+- Conversation Depth: ${conversationMetrics.totalMessages < 4 ? 'Brief conversation' : conversationMetrics.totalMessages > 10 ? 'Detailed conversation' : 'Standard conversation length'}
+- Response Quality: ${conversationMetrics.totalUserWords < 50 ? 'Minimal user input' : conversationMetrics.totalUserWords > 200 ? 'Comprehensive user input' : 'Moderate user input'}
+
 IMPORTANT: Respond with ONLY this exact JSON structure (no other text):
 
 {
@@ -184,13 +190,20 @@ CONVERSATION ANALYSIS GUIDELINES:
 - Consider message length patterns and conversation balance
 - Analyze the depth and quality of user responses relative to the scenario requirements
 
-SCORING CRITERIA:
+DYNAMIC SCORING CRITERIA (VARY BASED ON ACTUAL PERFORMANCE):
 - 9-10: Exceptional performance with clear examples from the conversation
 - 7-8: Good performance with room for improvement
 - 5-6: Average performance with several areas needing work
 - 3-4: Below average with significant improvement needed
 - 1-2: Poor performance requiring major changes
 - 0: No meaningful interaction or completely inappropriate approach
+
+SCORE VARIATION REQUIREMENTS:
+- DO NOT give the same score for all categories unless the performance is truly identical
+- Vary scores based on different aspects of the conversation
+- Consider conversation length, quality of responses, and specific techniques used
+- Factor in the scenario difficulty and customer persona complexity
+- Use the conversation metrics to influence scoring (e.g., short responses might affect clarity, long responses might affect engagement)
 
 FEEDBACK REQUIREMENTS:
 - Reference specific moments from the conversation

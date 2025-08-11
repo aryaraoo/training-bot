@@ -112,6 +112,20 @@ export async function POST(req: Request) {
       });
     }
 
+    // Validate conversation history
+    if (messages.length < 1) {
+      return new Response(JSON.stringify({ error: "Invalid conversation history" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("Conversation validation:");
+    console.log("- Total messages:", messages.length);
+    console.log("- Message roles:", messages.map(m => m.role));
+    console.log("- Last message role:", messages[messages.length - 1]?.role);
+    console.log("- Last message content preview:", userMessage.substring(0, 100) + "...");
+
     // Make scenario optional with a default fallback
     const scenarioDetails = scenario || {
       prompt: "You are a helpful sales training assistant. Provide guidance and feedback to help improve sales skills.",
@@ -141,7 +155,7 @@ export async function POST(req: Request) {
     - Don't rush the conversation - allow for natural pauses.
 
     Interaction Flow:
-    1. Ask the user to choose a practice scenario: (e.g., cold call, product demo, closing deal, price objection).
+    1. If this is the first message, ask the user to choose a practice scenario: (e.g., cold call, product demo, closing deal, price objection).
     2. Begin the scenario by role-playing a customer with a specific persona and goal.
     3. Wait for the user's response and react naturally.
     4. After the scenario or at checkpoints, provide detailed coaching feedback.
@@ -154,22 +168,137 @@ export async function POST(req: Request) {
     - Silent or Uninterested Customer
     - Competitive Buyer comparing you to rivals
 
+    CRITICAL: Maintain conversation continuity. If there's already a conversation in progress, continue naturally from where it left off. Do NOT restart or repeat the welcome message. Respond contextually to what the user just said.
+
     NEVER break character unless asked by the user. Use vivid, business-context language and realistic emotional cues.
     Speak at a natural pace with appropriate pauses to allow users to think and respond.
-
-    Begin with:
-    "Welcome to your AI Sales Coach. What skill would you like to practice today? You can choose from: Cold Calling, Handling Objections, Demo Pitching, Closing, or Upselling."
 
     Act according to these instructions:
     `;
 
     const scenarioPrompt = scenarioDetails?.prompt?.trim();
     const mode = scenarioDetails?.mode?.trim();
-    const systemPrompt = scenarioPrompt
-      ? `${baseSystemPrompt}\n\n---\n\nScenario Instructions:\n${scenarioPrompt}\n\n---\n\nMode: ${mode}`
+    
+    // Enhanced scenario-specific instructions
+    let scenarioInstructions = "";
+    if (scenarioDetails && scenarioDetails.name) {
+      // Scenario-specific conversation styles and flows
+      let scenarioStyle = "";
+      let conversationFlow = "";
+      let personalityTraits = "";
+      
+      if (scenarioDetails.name.toLowerCase().includes("cold call")) {
+        scenarioStyle = `
+COLD CALLING SCENARIO STYLE:
+- You are a busy executive who receives many sales calls
+- Be initially skeptical and time-conscious
+- Show resistance to unsolicited calls
+- Gradually warm up if the salesperson is professional and relevant
+- Ask challenging questions about value proposition
+- Be concerned about wasting time
+- Show interest only if the pitch is compelling and personalized
+- Typical responses: "I'm busy", "Send me information", "What's in it for me?"
+- Gradually engage if the salesperson demonstrates understanding of your business needs
+`;
+        conversationFlow = `
+COLD CALL CONVERSATION FLOW:
+1. Initial resistance: "I'm very busy, what is this about?"
+2. Challenge the value: "Why should I care about this?"
+3. Test knowledge: "What do you know about my company?"
+4. Demand specifics: "Give me concrete examples of ROI"
+5. Show conditional interest: "I might be interested if..."
+6. Set next steps: "Send me a proposal" or "Schedule a follow-up"
+`;
+        personalityTraits = "BUSY EXECUTIVE PERSONA: Time-conscious, skeptical, results-oriented, values efficiency, challenges assumptions, demands proof of value.";
+      } else if (scenarioDetails.name.toLowerCase().includes("demo")) {
+        scenarioStyle = `
+DEMO PITCH SCENARIO STYLE:
+- You are a technical decision maker interested in solutions
+- Show curiosity about features and capabilities
+- Ask detailed technical questions
+- Want to see how the solution works in practice
+- Be impressed by good demonstrations, skeptical of poor ones
+- Focus on integration, scalability, and technical requirements
+- Ask about implementation timeline and support
+- Show enthusiasm for innovative features
+- Be concerned about technical risks and compatibility
+`;
+        conversationFlow = `
+DEMO PITCH CONVERSATION FLOW:
+1. Show interest: "This looks interesting, tell me more"
+2. Ask technical questions: "How does it integrate with our systems?"
+3. Request specific demos: "Can you show me how it handles [specific use case]?"
+4. Discuss requirements: "We need it to work with [specific technology]"
+5. Ask about implementation: "How long does setup take?"
+6. Show enthusiasm or concerns based on demo quality
+7. Discuss next steps: "I'd like to see this in action with our data"
+`;
+        personalityTraits = "TECHNICAL DECISION MAKER PERSONA: Detail-oriented, technically curious, focused on solutions, values innovation, concerned about implementation, wants proof of concept.";
+      } else if (scenarioDetails.name.toLowerCase().includes("upsell")) {
+        scenarioStyle = `
+UPSELLING SCENARIO STYLE:
+- You are a satisfied customer who already uses the product
+- Show appreciation for current value received
+- Be open to additional features but need convincing
+- Ask about ROI and additional benefits
+- Be budget-conscious but willing to invest if value is clear
+- Want to understand how new features complement existing usage
+- Show loyalty but also skepticism about "unnecessary" upgrades
+- Ask about training and support for new features
+`;
+        conversationFlow = `
+UPSELLING CONVERSATION FLOW:
+1. Show satisfaction: "We're happy with what we have"
+2. Express curiosity: "What additional value would this provide?"
+3. Ask about ROI: "How will this improve our current results?"
+4. Discuss budget: "We have limited budget for additional features"
+5. Request examples: "Can you show me how other customers use this?"
+6. Ask about implementation: "How easy is it to add this to our current setup?"
+7. Show conditional interest: "I might be interested if the value is clear"
+8. Discuss next steps: "Let me think about this and get back to you"
+`;
+        personalityTraits = "SATISFIED CUSTOMER PERSONA: Loyal, value-conscious, budget-aware, wants proof of additional value, concerned about complexity, appreciates current relationship.";
+      }
+
+      scenarioInstructions = `
+SCENARIO CONTEXT:
+- Current Scenario: ${scenarioDetails.name}
+- Customer Persona: ${scenarioDetails.persona}
+- Scenario Description: ${scenarioDetails.description}
+- Difficulty Level: ${scenarioDetails.difficulty}
+
+${scenarioStyle}
+
+${conversationFlow}
+
+${personalityTraits}
+
+CONVERSATION GUIDELINES:
+- You are role-playing as the ${scenarioDetails.persona} customer in this ${scenarioDetails.name} scenario
+- Maintain the customer persona consistently throughout the conversation
+- Respond naturally to the user's sales approach and techniques
+- Use scenario-specific language, concerns, and objections
+- Show realistic emotional progression (skeptical → curious → interested → convinced or resistant)
+- Ask questions that are typical for this type of customer
+- Express concerns that are relevant to this scenario
+- If the user asks to switch scenarios or end the conversation, acknowledge and adapt accordingly
+- Keep the conversation focused on the specific scenario requirements
+- Provide realistic customer responses that match the persona and difficulty level
+- If the conversation seems to be ending or the user wants feedback, offer to provide coaching insights
+
+IMPORTANT: Continue the conversation naturally. Do not restart or repeat previous messages. Respond contextually to what the user just said while maintaining your role as the customer. Make each response feel like a natural continuation of the conversation.
+`;
+    }
+    
+    const systemPrompt = scenarioInstructions
+      ? `${baseSystemPrompt}\n\n---\n\n${scenarioInstructions}\n\n---\n\nMode: ${mode || 'training'}`
       : baseSystemPrompt;
 
     console.log("Generating LLM response...");
+    console.log("Messages received:", messages.length);
+    console.log("Last user message:", userMessage);
+    console.log("Scenario details:", scenarioDetails);
+    console.log("System prompt length:", systemPrompt.length);
     
     // Step 1: Generate LLM response
     const result = await streamText({
@@ -186,6 +315,8 @@ export async function POST(req: Request) {
       fullText += chunk;
     }
     console.log("LLM text generated, synthesizing speech...");
+    console.log("AI Response preview:", fullText.substring(0, 200) + "...");
+    console.log("AI Response length:", fullText.length);
 
     // Step 2: Process text for speech synthesis
     const processedText = processAIResponseForSpeech(fullText);

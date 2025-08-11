@@ -75,10 +75,14 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 8) return "bg-green-600";
-    if (score >= 6) return "bg-yellow-600";
-    if (score >= 4) return "bg-orange-600";
-    return "bg-red-600";
+    if (score >= 9) return "bg-emerald-600"; // Excellent - emerald green
+    if (score >= 8) return "bg-green-600";   // Very Good - green
+    if (score >= 7) return "bg-blue-600";    // Good - blue
+    if (score >= 6) return "bg-yellow-600";  // Fair - yellow
+    if (score >= 5) return "bg-orange-600";  // Average - orange
+    if (score >= 4) return "bg-purple-600";  // Below Average - purple
+    if (score >= 3) return "bg-indigo-600";  // Poor - indigo
+    return "bg-gray-600";                    // Very Poor - gray
   };
 
   const getScoreLabel = (score: number) => {
@@ -92,25 +96,41 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
     return "Very Poor";
   };
 
-  const renderBar = (label: string, value: number, color = "bg-green-600") => (
-    <div className="mb-3">
-      <div className="flex justify-between text-sm font-medium mb-1">
-        <span className="text-gray-700">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-800 font-semibold">{value}/10</span>
-          <span className={`text-xs px-2 py-1 rounded-full ${getScoreColor(value).replace('bg-', 'text-').replace('-600', '-100')} ${getScoreColor(value)}`}>
-            {getScoreLabel(value)}
-          </span>
+  const getScoreLabelColor = (score: number) => {
+    if (score >= 9) return "bg-emerald-100 text-emerald-800";
+    if (score >= 8) return "bg-green-100 text-green-800";
+    if (score >= 7) return "bg-blue-100 text-blue-800";
+    if (score >= 6) return "bg-yellow-100 text-yellow-800";
+    if (score >= 5) return "bg-orange-100 text-orange-800";
+    if (score >= 4) return "bg-purple-100 text-purple-800";
+    if (score >= 3) return "bg-indigo-100 text-indigo-800";
+    return "bg-gray-100 text-gray-800";
+  };
+
+  const renderBar = (label: string, value: number) => {
+    const color = getScoreColor(value);
+    const labelColor = getScoreLabelColor(value);
+    
+    return (
+      <div className="mb-3">
+        <div className="flex justify-between text-sm font-medium mb-1">
+          <span className="text-gray-700">{label}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-800 font-semibold">{value}/10</span>
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${labelColor}`}>
+              {getScoreLabel(value)}
+            </span>
+          </div>
+        </div>
+        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className={`${color} h-3 rounded-full transition-all duration-500 ease-out shadow-sm`} 
+            style={{ width: `${(value / 10) * 100}%` }}
+          ></div>
         </div>
       </div>
-      <div className="h-3 bg-gray-200 rounded-full">
-        <div 
-          className={`${color} h-3 rounded-full transition-all duration-500 ease-out`} 
-          style={{ width: `${(value / 10) * 100}%` }}
-        ></div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -207,45 +227,59 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
                     )}
 
                     {/* Conversation Insights */}
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
                       <h4 className="text-lg font-semibold mb-3 flex items-center gap-2 text-indigo-800">
                           📈 Conversation Insights
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                          <div className="text-center">
+                          <div className="text-center bg-white/50 rounded-lg p-2">
                             <div className="text-2xl font-bold text-indigo-600">{messages.filter(m => m.role === 'user').length}</div>
                             <div className="text-xs text-gray-600">Your Messages</div>
                           </div>
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-indigo-600">{messages.filter(m => m.role === 'assistant').length}</div>
+                          <div className="text-center bg-white/50 rounded-lg p-2">
+                            <div className="text-2xl font-bold text-purple-600">{messages.filter(m => m.role === 'assistant').length}</div>
                             <div className="text-xs text-gray-600">Customer Responses</div>
                           </div>
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-indigo-600">{Math.round(messages.filter(m => m.role === 'user').reduce((sum, m) => sum + m.content.split(' ').length, 0) / Math.max(messages.filter(m => m.role === 'user').length, 1))}</div>
+                          <div className="text-center bg-white/50 rounded-lg p-2">
+                            <div className="text-2xl font-bold text-blue-600">{Math.round(messages.filter(m => m.role === 'user').reduce((sum, m) => sum + m.content.split(' ').length, 0) / Math.max(messages.filter(m => m.role === 'user').length, 1))}</div>
                             <div className="text-xs text-gray-600">Avg Words/Message</div>
                           </div>
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-indigo-600">{Math.round((messages.filter(m => m.role === 'assistant').length / Math.max(messages.filter(m => m.role === 'user').length, 1)) * 100)}%</div>
+                          <div className="text-center bg-white/50 rounded-lg p-2">
+                            <div className="text-2xl font-bold text-green-600">{Math.round((messages.filter(m => m.role === 'assistant').length / Math.max(messages.filter(m => m.role === 'user').length, 1)) * 100)}%</div>
                             <div className="text-xs text-gray-600">Response Rate</div>
+                          </div>
+                        </div>
+                        
+                        {/* Additional insights */}
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div className="bg-white/30 rounded-lg p-2">
+                            <span className="font-medium text-indigo-700">Total Words:</span> {messages.reduce((sum, m) => sum + m.content.split(' ').length, 0)}
+                          </div>
+                          <div className="bg-white/30 rounded-lg p-2">
+                            <span className="font-medium text-purple-700">Conversation Length:</span> {messages.length < 4 ? 'Brief' : messages.length > 10 ? 'Detailed' : 'Standard'}
                           </div>
                         </div>
                       </div>
 
                     {/* Overall Performance Summary */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4">
                       <h4 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-800">
                         📊 Overall Performance Summary
                       </h4>
                       <div className="flex items-center gap-4">
                         <div className="text-center">
-                          <div className="text-3xl font-bold text-blue-600">{feedback.scores.overall}/10</div>
-                          <div className="text-sm text-gray-600">{getScoreLabel(feedback.scores.overall)}</div>
+                          <div className={`text-3xl font-bold ${getScoreColor(feedback.scores.overall).replace('bg-', 'text-')}`}>
+                            {feedback.scores.overall}/10
+                          </div>
+                          <div className={`text-sm font-medium ${getScoreLabelColor(feedback.scores.overall)} px-2 py-1 rounded-full mt-1`}>
+                            {getScoreLabel(feedback.scores.overall)}
+                          </div>
                         </div>
                         <div className="flex-1">
                           <div className="text-sm text-gray-700 mb-2">Performance Level:</div>
-                          <div className="h-2 bg-gray-200 rounded-full">
+                          <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                             <div 
-                              className={`${getScoreColor(feedback.scores.overall)} h-2 rounded-full transition-all duration-500`} 
+                              className={`${getScoreColor(feedback.scores.overall)} h-3 rounded-full transition-all duration-500 shadow-sm`} 
                               style={{ width: `${(feedback.scores.overall / 10) * 100}%` }}
                             ></div>
                           </div>
@@ -259,10 +293,10 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
                         📈 Detailed Performance Breakdown
                       </h4>
                       <div className="space-y-3">
-                        {renderBar("Professionalism", feedback.scores.professionalism, getScoreColor(feedback.scores.professionalism))}
-                        {renderBar("Tone", feedback.scores.tone, getScoreColor(feedback.scores.tone))}
-                        {renderBar("Clarity", feedback.scores.clarity, getScoreColor(feedback.scores.clarity))}
-                        {renderBar("Empathy", feedback.scores.empathy, getScoreColor(feedback.scores.empathy))}
+                        {renderBar("Professionalism", feedback.scores.professionalism)}
+                        {renderBar("Tone", feedback.scores.tone)}
+                        {renderBar("Clarity", feedback.scores.clarity)}
+                        {renderBar("Empathy", feedback.scores.empathy)}
                       </div>
                     </div>
 
