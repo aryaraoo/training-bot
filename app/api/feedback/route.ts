@@ -21,9 +21,30 @@ function sanitizeMessages(rawMessages: any[]): { role: "user" | "assistant"; con
     .map((msg) => ({
       role: msg.role,
       content: msg.content.trim()
-        .replace(/[^\w\s.,!?'-]/g, '') // Remove special characters that might trigger safety filters
-        .substring(0, 2000) // Limit content length to prevent issues
+        .replace(/[^\w\s.,!?'"-]/g, '') // Allow quotes and apostrophes for better context
+        .substring(0, 3000) // Increased limit for better analysis
     }));
+}
+
+function analyzeConversationMetrics(messages: { role: "user" | "assistant"; content: string }[]) {
+  const userMessages = messages.filter(m => m.role === "user");
+  const assistantMessages = messages.filter(m => m.role === "assistant");
+  
+  const totalUserWords = userMessages.reduce((sum, msg) => sum + msg.content.split(' ').length, 0);
+  const totalAssistantWords = assistantMessages.reduce((sum, msg) => sum + msg.content.split(' ').length, 0);
+  const avgUserMessageLength = userMessages.length > 0 ? totalUserWords / userMessages.length : 0;
+  const avgAssistantMessageLength = assistantMessages.length > 0 ? totalAssistantWords / assistantMessages.length : 0;
+  
+  return {
+    totalMessages: messages.length,
+    userMessages: userMessages.length,
+    assistantMessages: assistantMessages.length,
+    totalUserWords,
+    totalAssistantWords,
+    avgUserMessageLength: Math.round(avgUserMessageLength * 10) / 10,
+    avgAssistantMessageLength: Math.round(avgAssistantMessageLength * 10) / 10,
+    conversationRatio: userMessages.length > 0 ? (assistantMessages.length / userMessages.length).toFixed(2) : "0"
+  };
 }
 
 function createFallbackFeedback(reason: string = "Unable to analyze conversation") {
@@ -66,9 +87,13 @@ export async function POST(req: Request) {
 
     const messages = sanitizeMessages(rawMessages);
 
+    // Analyze conversation metrics for better context
+    const conversationMetrics = analyzeConversationMetrics(messages);
+
     // Debug logging
     console.log("📤 Sending to Gemini:", {
       messageCount: messages.length,
+      conversationMetrics,
       messages: messages.map(m => ({ 
         role: m.role, 
         contentLength: m.content.length,
@@ -97,9 +122,21 @@ export async function POST(req: Request) {
     const mode = scenarioDetails?.mode?.trim();
 
 const systemPrompt = `
-You are a sales training AI coach.
+You are an expert sales training AI coach with deep knowledge of sales techniques, customer psychology, and conversation analysis.
 
-Analyze the given sales conversation between a user and a customer. Based on the specific dialogue and scenario context, respond with ONLY this exact JSON structure (no other text):
+Analyze the given sales conversation between a user (salesperson) and a customer. Based on the specific dialogue, conversation patterns, and scenario context, provide detailed, dynamic feedback.
+
+CONVERSATION METRICS:
+- Total Messages: ${conversationMetrics.totalMessages}
+- User Messages: ${conversationMetrics.userMessages}
+- Assistant Messages: ${conversationMetrics.assistantMessages}
+- Total User Words: ${conversationMetrics.totalUserWords}
+- Total Assistant Words: ${conversationMetrics.totalAssistantWords}
+- Average User Message Length: ${conversationMetrics.avgUserMessageLength} words
+- Average Assistant Message Length: ${conversationMetrics.avgAssistantMessageLength} words
+- Conversation Ratio (Assistant/User): ${conversationMetrics.conversationRatio}
+
+IMPORTANT: Respond with ONLY this exact JSON structure (no other text):
 
 {
   "scores": {
@@ -109,32 +146,62 @@ Analyze the given sales conversation between a user and a customer. Based on the
     "empathy": number (0-10),
     "overall": number (0-10)
   },
-  "good": "One or two short sentences about what the user did well in this specific conversation.",
-  "improvement": "One or two short sentences about what the user could improve from this specific conversation.",
-  "suggestion": "One actionable tip or strategy to improve future sales conversations based on this one."
+  "good": "2-3 specific sentences about what the user did well, referencing specific moments from the conversation.",
+  "improvement": "2-3 specific sentences about what the user could improve, with concrete examples from the conversation.",
+  "suggestion": "One actionable, specific tip based on the conversation analysis and scenario requirements."
 }
 
 ${scenarioDetails ? `
-Scenario Context:
+SCENARIO ANALYSIS CONTEXT:
 - Scenario: ${scenarioDetails.name}
 - Description: ${scenarioDetails.description}
 - Customer Persona: ${scenarioDetails.persona}
 - Difficulty: ${scenarioDetails.difficulty}
 
-Use this scenario context to provide more specific and relevant feedback. Consider:
-- How well the user adapted to the specific customer persona
-- Whether they addressed the scenario's key challenges
-- If their approach matched the scenario's difficulty level
-- How effectively they handled the specific scenario requirements
+ANALYZE THESE SPECIFIC ASPECTS:
+1. How well did the user adapt their approach to the ${scenarioDetails.persona} persona?
+2. Did they effectively address the key challenges mentioned in "${scenarioDetails.description}"?
+3. Was their approach appropriate for the ${scenarioDetails.difficulty} difficulty level?
+4. How well did they handle the specific requirements of this scenario?
+5. Did they demonstrate understanding of the customer's needs and pain points?
+6. How effectively did they use sales techniques appropriate for this scenario?
+
+SCORING GUIDELINES:
+- Professionalism: Evaluate business etiquette, preparation, and professional conduct
+- Tone: Assess communication style, friendliness, and rapport building
+- Clarity: Measure how clearly the user communicated their points and understood customer responses
+- Empathy: Evaluate understanding of customer needs and emotional intelligence
+- Overall: Consider the complete performance in context of this specific scenario
 ` : ''}
 
-Guidelines:
-- Use the actual conversation to make your assessment.
-- Consider the specific scenario context when available.
-- All numeric scores must be between 0 and 10 (no strings).
-- Text fields must be concise, clear, and tailored to the conversation and scenario.
-- Do NOT include chat history, commentary, or any text outside the JSON.
-- Return ONLY valid JSON.
+CONVERSATION ANALYSIS GUIDELINES:
+- Analyze the actual conversation flow and patterns
+- Look for specific techniques used (open questions, active listening, objection handling, etc.)
+- Identify missed opportunities and successful moments
+- Consider the natural progression of the conversation
+- Evaluate how well the user adapted to customer responses
+- Assess the effectiveness of their closing or follow-up approach
+- Consider message length patterns and conversation balance
+- Analyze the depth and quality of user responses relative to the scenario requirements
+
+SCORING CRITERIA:
+- 9-10: Exceptional performance with clear examples from the conversation
+- 7-8: Good performance with room for improvement
+- 5-6: Average performance with several areas needing work
+- 3-4: Below average with significant improvement needed
+- 1-2: Poor performance requiring major changes
+- 0: No meaningful interaction or completely inappropriate approach
+
+FEEDBACK REQUIREMENTS:
+- Reference specific moments from the conversation
+- Provide concrete, actionable advice
+- Consider the scenario context when giving suggestions
+- Be constructive and encouraging while honest
+- Focus on the most impactful improvements
+- All numeric scores must be between 0 and 10 (no strings)
+- Text fields must be specific and tailored to this conversation
+- Do NOT include chat history, commentary, or any text outside the JSON
+- Return ONLY valid JSON
 `;
 
 

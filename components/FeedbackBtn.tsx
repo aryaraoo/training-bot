@@ -41,6 +41,7 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
   const [showModal, setShowModal] = useState(false);
 
   console.log("Messages for feedback:", messages);
+  console.log("Scenario context:", scenario);
 
   const handleGetFeedback = async () => {
     setLoading(true);
@@ -73,11 +74,34 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
     setError(null);
   };
 
+  const getScoreColor = (score: number) => {
+    if (score >= 8) return "bg-green-600";
+    if (score >= 6) return "bg-yellow-600";
+    if (score >= 4) return "bg-orange-600";
+    return "bg-red-600";
+  };
+
+  const getScoreLabel = (score: number) => {
+    if (score >= 9) return "Excellent";
+    if (score >= 8) return "Very Good";
+    if (score >= 7) return "Good";
+    if (score >= 6) return "Fair";
+    if (score >= 5) return "Average";
+    if (score >= 4) return "Below Average";
+    if (score >= 3) return "Poor";
+    return "Very Poor";
+  };
+
   const renderBar = (label: string, value: number, color = "bg-green-600") => (
     <div className="mb-3">
       <div className="flex justify-between text-sm font-medium mb-1">
         <span className="text-gray-700">{label}</span>
-        <span className="text-gray-800 font-semibold">{value}/10</span>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-800 font-semibold">{value}/10</span>
+          <span className={`text-xs px-2 py-1 rounded-full ${getScoreColor(value).replace('bg-', 'text-').replace('-600', '-100')} ${getScoreColor(value)}`}>
+            {getScoreLabel(value)}
+          </span>
+        </div>
       </div>
       <div className="h-3 bg-gray-200 rounded-full">
         <div 
@@ -148,17 +172,97 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
                   </div>
                 ) : feedback ? (
                   <div className="space-y-6">
-                    {/* Scores Section */}
+                    {/* Scenario Context */}
+                    {scenario && (
+                      <div className="bg-gradient-to-r from-purple-50 to-orange-50 border border-purple-200 rounded-xl p-4">
+                        <h4 className="text-lg font-semibold mb-3 flex items-center gap-2 text-purple-800">
+                          🎯 Scenario Analysis
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="font-medium text-gray-700">Scenario:</span>
+                            <p className="text-gray-800">{scenario.name}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Customer Persona:</span>
+                            <p className="text-gray-800">{scenario.persona}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Difficulty:</span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              scenario.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                              scenario.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              scenario.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {scenario.difficulty.charAt(0).toUpperCase() + scenario.difficulty.slice(1)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Messages Analyzed:</span>
+                            <p className="text-gray-800">{messages.length} messages</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Conversation Insights */}
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                      <h4 className="text-lg font-semibold mb-3 flex items-center gap-2 text-indigo-800">
+                          📈 Conversation Insights
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-indigo-600">{messages.filter(m => m.role === 'user').length}</div>
+                            <div className="text-xs text-gray-600">Your Messages</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-indigo-600">{messages.filter(m => m.role === 'assistant').length}</div>
+                            <div className="text-xs text-gray-600">Customer Responses</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-indigo-600">{Math.round(messages.filter(m => m.role === 'user').reduce((sum, m) => sum + m.content.split(' ').length, 0) / Math.max(messages.filter(m => m.role === 'user').length, 1))}</div>
+                            <div className="text-xs text-gray-600">Avg Words/Message</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-indigo-600">{Math.round((messages.filter(m => m.role === 'assistant').length / Math.max(messages.filter(m => m.role === 'user').length, 1)) * 100)}%</div>
+                            <div className="text-xs text-gray-600">Response Rate</div>
+                          </div>
+                        </div>
+                      </div>
+
+                    {/* Overall Performance Summary */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <h4 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-800">
+                        📊 Overall Performance Summary
+                      </h4>
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-blue-600">{feedback.scores.overall}/10</div>
+                          <div className="text-sm text-gray-600">{getScoreLabel(feedback.scores.overall)}</div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-700 mb-2">Performance Level:</div>
+                          <div className="h-2 bg-gray-200 rounded-full">
+                            <div 
+                              className={`${getScoreColor(feedback.scores.overall)} h-2 rounded-full transition-all duration-500`} 
+                              style={{ width: `${(feedback.scores.overall / 10) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Detailed Scores Section */}
                     <div className="bg-gray-50 rounded-xl p-5">
-                      <h4 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
-                        📊 Performance Scores
+                      <h4 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
+                        📈 Detailed Performance Breakdown
                       </h4>
                       <div className="space-y-3">
-                        {renderBar("Professionalism", feedback.scores.professionalism, "bg-purple-600")}
-                        {renderBar("Tone", feedback.scores.tone, "bg-blue-600")}
-                        {renderBar("Clarity", feedback.scores.clarity, "bg-green-600")}
-                        {renderBar("Empathy", feedback.scores.empathy, "bg-orange-600")}
-                        {renderBar("Overall Score", feedback.scores.overall, "bg-gradient-to-r from-purple-600 to-orange-600")}
+                        {renderBar("Professionalism", feedback.scores.professionalism, getScoreColor(feedback.scores.professionalism))}
+                        {renderBar("Tone", feedback.scores.tone, getScoreColor(feedback.scores.tone))}
+                        {renderBar("Clarity", feedback.scores.clarity, getScoreColor(feedback.scores.clarity))}
+                        {renderBar("Empathy", feedback.scores.empathy, getScoreColor(feedback.scores.empathy))}
                       </div>
                     </div>
 
@@ -186,7 +290,7 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
                       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                         <h4 className="flex items-center gap-2 text-blue-700 font-semibold mb-2">
                           <Lightbulb className="w-5 h-5" />
-                          Suggestion for Next Time
+                          Actionable Suggestion
                         </h4>
                         <p className="text-sm text-gray-800 leading-relaxed">{feedback.suggestion}</p>
                       </div>
@@ -197,6 +301,11 @@ export default function FeedbackButton({ messages, scenario }: FeedbackButtonPro
                     <div className="animate-pulse">
                       <Loader2 className="w-12 h-12 text-purple-600 mx-auto mb-4 animate-spin" />
                       <p className="text-gray-600">Analyzing your conversation...</p>
+                      {scenario && (
+                        <p className="text-sm text-gray-500 mt-2">
+                          Evaluating performance for: <span className="font-medium">{scenario.name}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
