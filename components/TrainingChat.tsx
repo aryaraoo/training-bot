@@ -682,7 +682,7 @@ export default function SalesTrainingChatInterface() {
                 onClick={() => handleSelectConversation(conv)}
               >
                 <div className="flex justify-between items-center">
-                  <div className="truncate max-w-[85%]">
+                  <div className="truncate max-w-[60%]">
                     <p className="font-medium text-sm text-gray-900 truncate">{conv.title}</p>
                     <p className="text-xs text-gray-500">{new Date(conv.updated_at).toLocaleString()}</p>
                   </div>
@@ -815,7 +815,6 @@ export default function SalesTrainingChatInterface() {
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-medium text-gray-700">Try Different Scenarios:</h3>
-                      <span className="text-xs text-gray-500">Click to switch</span>
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {suggestionCards.map(({ icon: IconComponent, title, subtitle }, idx) => {
@@ -922,7 +921,7 @@ export default function SalesTrainingChatInterface() {
           </ScrollArea>
 
           {/* Input form */}
-          <form
+          {/* <form
             onSubmit={handleSubmit}
             className="sticky bottom-0 z-10 bg-white border-t border-gray-200 p-3 flex items-center gap-2 animate-in slide-in-from-bottom-4 duration-300"
           >
@@ -962,16 +961,16 @@ export default function SalesTrainingChatInterface() {
             >
               <Send className="w-5 h-5" />
             </Button>
-          </form>
+          </form> */}
         </div>
       </div>
 
 
 
 {/* Push To Talk Bar */}
-      {/* <div className="fixed inset-x-0 bottom-8 flex justify-center lg:justify-start lg:pl-[280px]">
+      <div className="fixed bottom-8 left-[60%] -translate-x-1/2">
         <PushToTalkBar
-          isRecording={recordingTimeout}
+          isRecording={listening} // ✅ Now linked to actual recording state
           onStartRecording={handleStartRecording}
           onStopRecording={handleStopRecording}
           onNewChat={handleNewChat}
@@ -984,7 +983,7 @@ export default function SalesTrainingChatInterface() {
           onToggleMode={() => setCurrentMode(currentMode === "sales" ? "game" : "sales")}
           showModeIndicator={true}
         />
-      </div> */}
+      </div>
 
 
 
